@@ -1,4 +1,4 @@
-# Example Test Adapter for Visual Studio Code
+# Woo Test Adapter for Visual Studio Code
 
 This repository contains an example for implementing a `TestAdapter` extension that works with the
 [Test Explorer](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer) extension.
