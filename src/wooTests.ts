@@ -34,7 +34,13 @@ export function loadTests(log: Log): Promise<TestSuiteInfo> {
         '**/*Test.php',
         '**/test-*.php',
     ];
-    const excludePaths: string[] = workbenchConfig.get('search.exclude') || [];
+    
+	const excludePaths: string[] = workbenchConfig.get('search.exclude') || [
+        '**/vendor/**',
+        '**/node_modules/**',
+        '.git',
+        '.vscode',
+    ];
 
     log.debug(searchPaths, excludePaths);
 
@@ -167,10 +173,9 @@ async function runPHPUnitTestSuite(
             vscode.workspace
                 .getConfiguration('woo-test-explorer')
                 .get('command') +
-                ('phpunit_tests' !==
-                node.id
-                ? ` -- --filter ${node.label}`
-                : ''),
+                ('phpunit_tests' !== node.id
+                    ? ` -- --filter ${node.label}`
+                    : ''),
             { cwd: vscode.workspace.rootPath, env: process.env },
             (e, stdout) => {
                 testStatesEmitter.fire(<TestSuiteEvent>{
