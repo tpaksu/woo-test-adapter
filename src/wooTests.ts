@@ -12,6 +12,8 @@ import {
 } from 'vscode-test-adapter-api';
 import { Log } from 'vscode-test-adapter-util';
 
+let outputChannel: vscode.OutputChannel | null = null;
+
 const phpUnitTests: TestSuiteInfo = {
     type: 'suite',
     id: 'phpunit_tests',
@@ -22,7 +24,7 @@ const phpUnitTests: TestSuiteInfo = {
 const testSuite: TestSuiteInfo = {
     type: 'suite',
     id: 'root',
-    label: 'Woo tests', // the label of the root node should be the name of the testing framework
+    label: 'Woo Test Explorer', // the label of the root node should be the name of the testing framework
     children: [phpUnitTests],
 };
 
@@ -34,8 +36,8 @@ export function loadTests(log: Log): Promise<TestSuiteInfo> {
         '**/*Test.php',
         '**/test-*.php',
     ];
-    
-	const excludePaths: string[] = workbenchConfig.get('search.exclude') || [
+
+    const excludePaths: string[] = workbenchConfig.get('search.exclude') || [
         '**/vendor/**',
         '**/node_modules/**',
         '.git',
@@ -169,26 +171,24 @@ async function runPHPUnitTestSuite(
             state: 'running',
         });
 
-        cp.exec(
+        const command =
             vscode.workspace
                 .getConfiguration('woo-test-explorer')
                 .get('command') +
-                ('phpunit_tests' !== node.id
-                    ? ` -- --filter ${node.label}`
-                    : ''),
-            { cwd: vscode.workspace.rootPath, env: process.env },
-            (e, stdout) => {
+            ('phpunit_tests' !== node.id
+                ? ` -- --filter ${node.label}`
+                : '');
+
+        spawnShellWithOutput(
+            command,
+            (code: number, signal: NodeJS.Signals | null, stdout: string) => {
                 testStatesEmitter.fire(<TestSuiteEvent>{
                     type: 'suite',
                     suite: node.id,
-                    state: e ? 'errored' : 'completed',
-                    message:
-                        (e?.message || node.id) +
-                        '\nStdOut: ' +
-                        stdout.toString(),
+                    state: code !== 0 ? 'errored' : 'completed',
                 });
-                parseSuiteTestResults(node, stdout, testStatesEmitter);
                 resolve();
+                parseSuiteTestResults(node, stdout, testStatesEmitter);
             }
         );
     });
@@ -233,28 +233,61 @@ async function runPHPUnitSingleTest(
             state: 'running',
         });
 
-        cp.exec(
+        const command =
             vscode.workspace
                 .getConfiguration('woo-test-explorer')
                 .get('command') +
-                ' -- --filter "/' +
-                node.id +
-                '(\\s.*)?$/"',
-            { cwd: vscode.workspace.rootPath, env: process.env },
-            (e, stdout) => {
+            ' -- --filter "/' +
+            node.id +
+            '(\\s.*)?$/"';
+
+        spawnShellWithOutput(
+            command,
+            (code: number, signal: NodeJS.Signals | null, stdout: string) => {
                 testStatesEmitter.fire(<TestEvent>{
                     type: 'test',
                     test: node.id,
-                    state: e ? 'failed' : 'passed',
-                    message:
-                        node.description +
-                        '\n' +
-                        (e?.message || node.id) +
-                        '\nStdOut: ' +
-                        stdout.toString(),
+                    state: code !== 0 ? 'failed' : 'passed',
                 });
                 resolve();
             }
         );
+    });
+}
+
+function spawnShellWithOutput(
+    command: string,
+    callback: CallableFunction
+): void {
+    if (outputChannel) outputChannel.dispose();
+    outputChannel = vscode.window.createOutputChannel('Woo Test Explorer');
+    outputChannel.show(true);
+
+    const runner = cp.spawn(command, ['--colors=never'], {
+        cwd: vscode.workspace.rootPath,
+        env: process.env,
+        shell: true,
+    });
+
+    let stdout = '';
+
+    runner.stdout.setEncoding('utf8');
+    runner.stdout.on('data', (chunk: any) => {
+        outputChannel?.append(chunk.toString());
+        stdout += chunk.toString();
+    });
+    runner.on('error', (chunk: any) => {
+        outputChannel?.append(chunk.toString());
+        stdout += chunk.toString();
+    });
+    runner.stderr.setEncoding('utf8');
+    runner.stderr.on('data', (chunk: any) => {
+        outputChannel?.append(chunk.toString());
+        stdout += chunk.toString();
+    });
+
+    runner.on('exit', (code: number | null, signal: NodeJS.Signals | null) => {
+		outputChannel?.appendLine("Command exited with code: " + code);
+        callback(code, signal, stdout);
     });
 }

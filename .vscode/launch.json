@@ -4,7 +4,7 @@
     {
       "type": "extensionHost",
       "request": "launch",
-      "name": "Woo test adapter",
+      "name": "Woo test explorer",
       "runtimeExecutable": "${execPath}",
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}"

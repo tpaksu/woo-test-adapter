@@ -42,7 +42,7 @@ export class WooTestAdapter implements TestAdapter {
         public readonly workspace: vscode.WorkspaceFolder,
         private readonly log: Log
     ) {
-        this.log.info('Initializing Woo test adapter');
+        this.log.info('Initializing Woo Test Explorer');
 
         this.disposables.push(this.testsEmitter);
         this.disposables.push(this.testStatesEmitter);
