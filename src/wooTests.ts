@@ -82,7 +82,13 @@ export async function runTests(
     for (const suiteOrTestId of tests) {
         const node = findNode(testSuite, suiteOrTestId);
         if (node) {
-            await runNode(node, testStatesEmitter);
+            if ('suite' === node.type && 'root' === node.id) {
+                node.children.forEach((subNode: TestSuiteInfo | TestInfo) => {
+                    runNode(subNode, testStatesEmitter);
+                });
+            } else {
+                await runNode(node, testStatesEmitter);
+            }
         }
     }
 }
@@ -177,11 +183,16 @@ async function runPHPUnitTestSuite(
                 .get('command') +
             ('phpunit_tests' !== node.id
                 ? ` -- --filter ${node.label}`
-                : '');
-
+                : ' --') +
+            ' --colors=never';
+            
         spawnShellWithOutput(
             command,
-            (code: number, signal: NodeJS.Signals | null, stdout: string) => {
+            (
+                code: number | null,
+                signal: NodeJS.Signals | null,
+                stdout: string
+            ) => {
                 testStatesEmitter.fire(<TestSuiteEvent>{
                     type: 'suite',
                     suite: node.id,
@@ -239,11 +250,15 @@ async function runPHPUnitSingleTest(
                 .get('command') +
             ' -- --filter "/' +
             node.id +
-            '(\\s.*)?$/"';
+            '(\\s.*)?$/" --colors=never';
 
         spawnShellWithOutput(
             command,
-            (code: number, signal: NodeJS.Signals | null, stdout: string) => {
+            (
+                code: number | null,
+                signal: NodeJS.Signals | null,
+                stdout: string
+            ) => {
                 testStatesEmitter.fire(<TestEvent>{
                     type: 'test',
                     test: node.id,
@@ -257,13 +272,18 @@ async function runPHPUnitSingleTest(
 
 function spawnShellWithOutput(
     command: string,
-    callback: CallableFunction
+    callback: (
+        code: number | null,
+        signal: NodeJS.Signals | null,
+        stdout: string
+    ) => void
 ): void {
     if (outputChannel) outputChannel.dispose();
     outputChannel = vscode.window.createOutputChannel('Woo Test Explorer');
     outputChannel.show(true);
+    outputChannel.appendLine('Running command: ' + command);
 
-    const runner = cp.spawn(command, ['--colors=never'], {
+    const runner = cp.spawn(command, [], {
         cwd: vscode.workspace.rootPath,
         env: process.env,
         shell: true,
@@ -287,7 +307,7 @@ function spawnShellWithOutput(
     });
 
     runner.on('exit', (code: number | null, signal: NodeJS.Signals | null) => {
-		outputChannel?.appendLine("Command exited with code: " + code);
+        outputChannel?.appendLine('Command exited with code: ' + code);
         callback(code, signal, stdout);
     });
 }
