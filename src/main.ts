@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { TestHub, testExplorerExtensionId } from 'vscode-test-adapter-api';
 import { Log, TestAdapterRegistrar } from 'vscode-test-adapter-util';
 import { WooTestAdapter } from './adapter';
+import { WooDiagnostics } from './diagnostics';
 
 export async function activate(context: vscode.ExtensionContext) {
     const workspaceFolder = (vscode.workspace.workspaceFolders || [])[0];
@@ -25,7 +26,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
     if (testExplorerExtension) {
         const testHub = testExplorerExtension.exports;
-		const adapter: WooTestAdapter = new WooTestAdapter(workspaceFolder, log)
+        const diags: WooDiagnostics = new WooDiagnostics(context);
+		const adapter: WooTestAdapter = new WooTestAdapter(workspaceFolder, log, diags)
         // this will register an ExampleTestAdapter for each WorkspaceFolder
         context.subscriptions.push(
             new TestAdapterRegistrar(

@@ -9,7 +9,8 @@ import {
     TestEvent,
 } from 'vscode-test-adapter-api';
 import { Log } from 'vscode-test-adapter-util';
-import { loadTests, runTests } from './wooTests';
+import { WooDiagnostics } from './diagnostics';
+import { loadTests, runTests } from './wooTestRunner';
 
 /**
  * This class is intended as a starting point for implementing a "real" TestAdapter.
@@ -40,20 +41,22 @@ export class WooTestAdapter implements TestAdapter {
 
     constructor(
         public readonly workspace: vscode.WorkspaceFolder,
-        private readonly log: Log
+        private readonly log: Log,
+        private readonly diags: WooDiagnostics
     ) {
         this.log.info('Initializing Woo Test Explorer');
 
         this.disposables.push(this.testsEmitter);
         this.disposables.push(this.testStatesEmitter);
         this.disposables.push(this.autorunEmitter);
+        this.disposables.push(this.diags);
     }
 
     async load(): Promise<void> {
         this.log.info('Loading tests');
 
         this.testsEmitter.fire(<TestLoadStartedEvent>{ type: 'started' });
-
+        this.diags.clear();
         const loadedTests = await loadTests(this.log);
 
         this.testsEmitter.fire(<TestLoadFinishedEvent>{
@@ -66,7 +69,7 @@ export class WooTestAdapter implements TestAdapter {
 		this.log.info('Reloading tests');
 
         this.testsEmitter.fire(<TestLoadStartedEvent>{ type: 'started' });
-
+        this.diags.clear();
         const loadedTests = await loadTests(this.log);
 
         this.testsEmitter.fire(<TestLoadFinishedEvent>{
@@ -77,14 +80,14 @@ export class WooTestAdapter implements TestAdapter {
 
     async run(tests: string[]): Promise<void> {
         this.log.info(`Running tests ${JSON.stringify(tests)}`);
-
+        this.diags.clear();
         this.testStatesEmitter.fire(<TestRunStartedEvent>{
             type: 'started',
             tests,
         });
 
         // in a "real" TestAdapter this would start a test run in a child process
-        await runTests(tests, this.testStatesEmitter);
+        await runTests(tests, this.testStatesEmitter, this.diags);
 
         this.testStatesEmitter.fire(<TestRunFinishedEvent>{ type: 'finished' });
     }
