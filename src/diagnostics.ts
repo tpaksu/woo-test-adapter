@@ -7,7 +7,6 @@ export class WooDiagnostics {
             vscode.languages.createDiagnosticCollection('php');
         context.subscriptions.push(this.diagnosticCollection);
     }
-
     public addError(file: string, line: number, error: string): void {
         const fileUri = vscode.Uri.file(file);
         let lineText: string = '';
@@ -22,15 +21,18 @@ export class WooDiagnostics {
                         .pop() || '';
             })
             .then(() => {
-                const diagnostic = new vscode.Diagnostic(
-                    new vscode.Range(
-                        line,
-                        lineText.length - lineText.trimStart().length,
-                        line,
-                        lineText.trimEnd().length
-                    ),
-                    error
+                const position = new vscode.Range(
+                    line,
+                    lineText.length - lineText.trimStart().length,
+                    line,
+                    lineText.trimEnd().length
                 );
+                const diagnostic = new vscode.Diagnostic(
+                    position,
+                    error,
+                    vscode.DiagnosticSeverity.Error
+                );
+                diagnostic.source = 'woo-test-explorer';
                 let previousDiagnostics: readonly vscode.Diagnostic[] =
                     this.diagnosticCollection.get(fileUri) || [];
                 this.diagnosticCollection.set(
