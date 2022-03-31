@@ -11,7 +11,7 @@ export class WooTest implements TestInfo {
     public id: string;
     public label: string;
     public message: string;
-    protected state: WooTestState;
+    public state: WooTestState;
     public type: 'test';
     public file?: string;
     public line?: number;
@@ -63,8 +63,8 @@ export class WooTest implements TestInfo {
 }
 
 export enum WooTestState {
-    WOO_SUITE_RUNNING = 'running',
-    WOO_SUITE_FAILED = 'failed',
-    WOO_SUITE_PASSED = 'passed',
-    WOO_SUITE_PENDING = '',
+    WOO_TEST_RUNNING = 'running',
+    WOO_TEST_FAILED = 'failed',
+    WOO_TEST_PASSED = 'passed',
+    WOO_TEST_PENDING = '',
 }

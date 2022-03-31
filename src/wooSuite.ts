@@ -12,7 +12,7 @@ export class WooSuite implements TestSuiteInfo {
     public id: string;
     public label: string;
     public message: string;
-    protected state: WooSuiteState;
+    public state: WooSuiteState;
     public children: (WooSuite | WooTest)[];
     public type: 'suite';
     public file?: string;

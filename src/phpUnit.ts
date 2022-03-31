@@ -73,7 +73,7 @@ export function runPHPUnitSingleTest(
     diags: WooDiagnostics
 ): Promise<void> {
     return new Promise((resolve) => {
-        node.setState(testStatesEmitter, WooTestState.WOO_SUITE_RUNNING);
+        node.setState(testStatesEmitter, WooTestState.WOO_TEST_RUNNING);
 
         const command =
             vscode.workspace
@@ -93,15 +93,15 @@ export function runPHPUnitSingleTest(
                 if (code && code > 2) {
                     node.setState(
                         testStatesEmitter,
-                        WooTestState.WOO_SUITE_FAILED
+                        WooTestState.WOO_TEST_FAILED
                     );
                 } else {
                     const result = parseNodeTestResult(node, stdout, diags);
                     node.setState(
                         testStatesEmitter,
                         result
-                            ? WooTestState.WOO_SUITE_FAILED
-                            : WooTestState.WOO_SUITE_PASSED
+                            ? WooTestState.WOO_TEST_FAILED
+                            : WooTestState.WOO_TEST_PASSED
                     );
                 }
                 resolve();
@@ -142,8 +142,8 @@ function parseSuiteTestResults(
             subnode.setState(
                 testStatesEmitter,
                 result
-                    ? WooTestState.WOO_SUITE_FAILED
-                    : WooTestState.WOO_SUITE_PASSED
+                    ? WooTestState.WOO_TEST_FAILED
+                    : WooTestState.WOO_TEST_PASSED
             );
         }
         hasError = hasError ? true : result;

@@ -10,7 +10,7 @@ import {
 import { Log } from 'vscode-test-adapter-util';
 import { runPHPUnitSingleTest, runPHPUnitTestSuite } from './phpUnit';
 import { WooDiagnostics } from './diagnostics';
-import { WooSuite } from './wooSuite';
+import { WooSuite, WooSuiteState } from './wooSuite';
 import { WooTest, WooTestState } from './wooTest';
 
 let fileChangeListener: vscode.Disposable;
@@ -95,6 +95,7 @@ export async function runTests(
         const node = findNode(testSuite, suiteOrTestId);
         if (node) await runNode(node, testStatesEmitter, diags);
     }
+    updateStates(testSuite, testStatesEmitter);
 }
 
 function getTestSuite(path: string, log: Log): void {
@@ -136,7 +137,7 @@ function getTestMethods(parentKey: string, path: string, log: Log): WooTest[] {
                     `${parentKey}::${matchFound}`,
                     matchFound,
                     '',
-                    WooTestState.WOO_SUITE_PENDING,
+                    WooTestState.WOO_TEST_PENDING,
                     path,
                     matchLine - 1
                 )
@@ -176,5 +177,36 @@ async function runNode(
         }
     } catch (e) {
         console.log(e);
+    }
+}
+
+function updateStates(
+    node: WooSuite,
+    testStatesEmitter: vscode.EventEmitter<
+        TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent
+    >
+): string {
+    let state: string = WooTestState.WOO_TEST_PENDING;
+    for (let i = 0; i < node.children.length; i++) {
+        const child: WooSuite | WooTest = node.children[i];
+        if (child instanceof WooSuite) {
+            const suiteState = updateStates(child, testStatesEmitter);
+            child.setState(testStatesEmitter, <WooSuiteState>suiteState);
+        } else if (child instanceof WooTest) {
+            state =
+                state === WooTestState.WOO_TEST_FAILED
+                    ? WooTestState.WOO_TEST_FAILED
+                    : child.state;
+        }
+    }
+    switch (state) {
+        case WooTestState.WOO_TEST_FAILED:
+            return WooSuiteState.WOO_SUITE_ERRORED;
+        case WooTestState.WOO_TEST_PASSED:
+            return WooSuiteState.WOO_SUITE_COMPLETED;
+        case WooTestState.WOO_TEST_RUNNING:
+            return WooSuiteState.WOO_SUITE_RUNNING;
+        default:
+            return WooSuiteState.WOO_SUITE_PENDING;
     }
 }
