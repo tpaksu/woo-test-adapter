@@ -60,7 +60,7 @@
           "description": "the command for running tests",
           "type": "string",
           "scope": "resource",
-          "default": "npm run test-noinstall"
+          "default": "npm run test-noinstall --"
         },
         "woo-test-explorer.logpanel": {
           "description": "write diagnostic logs to an output panel",

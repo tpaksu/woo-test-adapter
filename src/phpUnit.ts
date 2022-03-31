@@ -29,8 +29,8 @@ export function runPHPUnitTestSuite(
                 .getConfiguration('woo-test-explorer')
                 .get('command') +
             ('root' !== node.id
-                ? ` -- --filter ${node.label}`
-                : ' --') +
+                ? ` --filter ${node.label}`
+                : '') +
             ' --colors=never';
 
         spawnShellWithOutput(
@@ -79,7 +79,7 @@ export function runPHPUnitSingleTest(
             vscode.workspace
                 .getConfiguration('woo-test-explorer')
                 .get('command') +
-            ' -- --filter "/' +
+            ' --filter "/' +
             node.id +
             '(\\s.*)?$/" --colors=never';
 
