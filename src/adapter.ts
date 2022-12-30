@@ -27,6 +27,10 @@ export class WooTestAdapter implements TestAdapter {
     >();
     private readonly autorunEmitter = new vscode.EventEmitter<void>();
 
+    private testRunId = 0;
+
+    private cancellationToken = new vscode.CancellationTokenSource();
+
     get tests(): vscode.Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
         return this.testsEmitter.event;
     }
@@ -53,7 +57,7 @@ export class WooTestAdapter implements TestAdapter {
     }
 
     async load(): Promise<void> {
-        this.log.info('Loading tests');
+        this.log.info('Loading tests..');
 
         this.testsEmitter.fire(<TestLoadStartedEvent>{ type: 'started' });
         this.diags.clear();
@@ -62,45 +66,75 @@ export class WooTestAdapter implements TestAdapter {
         this.testsEmitter.fire(<TestLoadFinishedEvent>{
             type: 'finished',
             suite: loadedTests,
+        });
+
+        const uris = loadedTests.children.map((suite) => {
+            return suite.uri;
+        });
+
+        vscode.workspace.onDidSaveTextDocument((e: vscode.TextDocument) => {
+            if (uris.find((uri) => uri === e.uri.path)) {
+                this.reload();
+            }
         });
     }
-	
-	async reload(): Promise<void> {
-		this.log.info('Reloading tests');
 
-        this.testsEmitter.fire(<TestLoadStartedEvent>{ type: 'started' });
-        this.diags.clear();
-        const loadedTests = await loadTests(this.log);
-
-        this.testsEmitter.fire(<TestLoadFinishedEvent>{
-            type: 'finished',
-            suite: loadedTests,
-        });
-	}
+    async reload(): Promise<void> {
+        vscode.window.withProgress(
+            {
+                location: vscode.ProgressLocation.Notification,
+                title: 'Reloading tests..',
+                cancellable: false,
+            },
+            async (progress, token) => {
+                this.testsEmitter.fire(<TestLoadStartedEvent>{
+                    type: 'started',
+                });
+                this.diags.clear();
+                const loadedTests = await loadTests(this.log);
+                this.log.info('Loaded tests..');
+                this.testsEmitter.fire(<TestLoadFinishedEvent>{
+                    type: 'finished',
+                    suite: loadedTests,
+                });
+            }
+        );
+    }
 
     async run(tests: string[]): Promise<void> {
         this.log.info(`Running tests ${JSON.stringify(tests)}`);
         this.diags.clear();
+        this.testRunId++;
         this.testStatesEmitter.fire(<TestRunStartedEvent>{
             type: 'started',
             tests,
+            testRunId: 'wooTestRun' + this.testRunId.toString(),
         });
+        
+        this.cancellationToken = new vscode.CancellationTokenSource();
 
         // in a "real" TestAdapter this would start a test run in a child process
-        await runTests(tests, this.testStatesEmitter, this.diags);
-
-        this.testStatesEmitter.fire(<TestRunFinishedEvent>{ type: 'finished' });
+        runTests(
+            tests,
+            this.testStatesEmitter,
+            this.diags,
+            this.cancellationToken.token
+        )
+            .catch(() => {})
+            .finally(() => {
+                this.testStatesEmitter.fire(<TestRunFinishedEvent>{
+                    type: 'finished',
+                    testRunId: 'wooTestRun' + this.testRunId.toString(),
+                });
+            });
     }
 
-    /*	implement this method if your TestAdapter supports debugging tests
-	async debug(tests: string[]): Promise<void> {
-		// start a test run in a child process and attach the debugger to it...
-	}
-*/
-
     cancel(): void {
-        // in a "real" TestAdapter this would kill the child process for the current test run (if there is any)
-        throw new Error('Method not implemented.');
+        this.cancellationToken.cancel();
+        this.testStatesEmitter.fire(<TestRunFinishedEvent>{
+            type: 'finished',
+            testRunId: 'wooTestRun' + this.testRunId.toString(),
+        });
     }
 
     dispose(): void {

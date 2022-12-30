@@ -9,6 +9,7 @@ import {
 import { WooTest } from './wooTest';
 
 export class WooSuite implements TestSuiteInfo {
+    public uri: string;
     public id: string;
     public label: string;
     public message: string;
@@ -18,6 +19,7 @@ export class WooSuite implements TestSuiteInfo {
     public file?: string;
     public line?: number;
     constructor(
+        uri: string,
         id: string,
         label: string,
         message?: string,
@@ -25,6 +27,7 @@ export class WooSuite implements TestSuiteInfo {
         file?: string,
         line?: number
     ) {
+        this.uri = uri;
         this.id = id;
         this.label = label;
         this.message = message || '';

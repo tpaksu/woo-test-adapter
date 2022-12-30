@@ -8,6 +8,7 @@ import {
 } from 'vscode-test-adapter-api';
 
 export class WooTest implements TestInfo {
+    public uri: string;
     public id: string;
     public label: string;
     public message: string;
@@ -16,6 +17,7 @@ export class WooTest implements TestInfo {
     public file?: string;
     public line?: number;
     constructor(
+        uri: string,
         id: string,
         label: string,
         message: string,
@@ -23,6 +25,7 @@ export class WooTest implements TestInfo {
         file?: string,
         line?: number
     ) {
+        this.uri = uri;
         this.id = id;
         this.label = label;
         this.message = message;

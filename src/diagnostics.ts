@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
 
 export class WooDiagnostics {
     private diagnosticCollection: vscode.DiagnosticCollection;
@@ -10,9 +11,25 @@ export class WooDiagnostics {
     public addError(file: string, line: number, error: string): void {
         const fileUri = vscode.Uri.file(file);
         let lineText: string = '';
-        vscode.workspace.fs
-            .readFile(fileUri)
-            .then((value: Uint8Array) => {
+        const readFileAsync = function (filename: string) {
+            return new Promise(
+                (
+                    resolve: (value: Buffer | PromiseLike<Buffer>) => void,
+                    reject
+                ) => {
+                    fs.readFile(
+                        filename,
+                        (err: NodeJS.ErrnoException | null, buffer: Buffer) => {
+                            if (err) reject(err);
+                            else resolve(buffer);
+                        }
+                    );
+                }
+            );
+        };
+
+        readFileAsync(fileUri.path)
+            .then((value) => {
                 lineText =
                     value
                         .toString()

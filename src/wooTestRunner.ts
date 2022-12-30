@@ -13,9 +13,7 @@ import { WooDiagnostics } from './diagnostics';
 import { WooSuite, WooSuiteState } from './wooSuite';
 import { WooTest, WooTestState } from './wooTest';
 
-let fileChangeListener: vscode.Disposable;
-
-const testSuite: WooSuite = new WooSuite('root', 'Woo Test Explorer');
+const testSuite: WooSuite = new WooSuite('', 'root', 'Woo Test Explorer');
 
 export function loadTests(log: Log): Promise<WooSuite> {
     const workbenchConfig =
@@ -32,8 +30,6 @@ export function loadTests(log: Log): Promise<WooSuite> {
         '.git',
         '.vscode',
     ];
-
-    log.debug(searchPaths, excludePaths);
 
     return new Promise<WooSuite>((resolve) => {
         testSuite.children = [];
@@ -57,29 +53,7 @@ export function loadTests(log: Log): Promise<WooSuite> {
                 }).forEach((uri: vscode.Uri) => {
                     getTestSuite(uri.path, log);
                 });
-                if (fileChangeListener) fileChangeListener.dispose();
-                fileChangeListener = vscode.workspace.onDidSaveTextDocument(
-                    (e: vscode.TextDocument) => {
-                        if (
-                            uris.filter((uri: vscode.Uri) => {
-                                return uri.path === e.uri.path;
-                            }).length > 0
-                        ) {
-                            vscode.window.withProgress(
-                                {
-                                    location:
-                                        vscode.ProgressLocation.Notification,
-                                    title: 'Reloading tests..',
-                                    cancellable: false,
-                                },
-                                async (progress, token) => {
-                                    await loadTests(log);
-                                }
-                            );
-                        }
-                    }
-                );
-                return resolve(testSuite);
+                resolve(testSuite);
             });
     });
 }
@@ -89,11 +63,22 @@ export async function runTests(
     testStatesEmitter: vscode.EventEmitter<
         TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent
     >,
-    diags: WooDiagnostics
+    diags: WooDiagnostics,
+    cancellationToken: vscode.CancellationToken
 ): Promise<void> {
+    let continueRunning = true;
     for (const suiteOrTestId of tests) {
+        if (!continueRunning) break;
         const node = findNode(testSuite, suiteOrTestId);
-        if (node) await runNode(node, testStatesEmitter, diags);
+        if (node)
+            await runNode(
+                node,
+                testStatesEmitter,
+                diags,
+                cancellationToken
+            ).catch(() => {
+                continueRunning = false;
+            });
     }
     updateStates(testSuite, testStatesEmitter);
 }
@@ -105,9 +90,9 @@ function getTestSuite(path: string, log: Log): void {
             .toString()
             .match(/^class (\w+)\s*(\s*extends \w+)*\s*\{/im);
         if (match) {
-            log.debug(match);
             const testName: string = match[1];
             const newSuite = new WooSuite(
+                path,
                 testName,
                 testName,
                 undefined,
@@ -134,6 +119,7 @@ function getTestMethods(parentKey: string, path: string, log: Log): WooTest[] {
                 match['input']?.slice(0, matchOffset).split('\n').length || 1;
             testsInFile.push(
                 new WooTest(
+                    path,
                     `${parentKey}::${matchFound}`,
                     matchFound,
                     '',
@@ -167,16 +153,31 @@ async function runNode(
     testStatesEmitter: vscode.EventEmitter<
         TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent
     >,
-    diags: WooDiagnostics
+    diags: WooDiagnostics,
+    cancellationToken: vscode.CancellationToken
 ): Promise<void> {
     try {
+        if (cancellationToken.isCancellationRequested) {
+            return Promise.reject();
+        }
         if (node instanceof WooSuite) {
-            return runPHPUnitTestSuite(node, testStatesEmitter, diags);
+            return runPHPUnitTestSuite(
+                node,
+                testStatesEmitter,
+                diags,
+                cancellationToken
+            );
         } else {
-            return runPHPUnitSingleTest(node, testStatesEmitter, diags);
+            return runPHPUnitSingleTest(
+                node,
+                testStatesEmitter,
+                diags,
+                cancellationToken
+            );
         }
     } catch (e) {
         console.log(e);
+        return Promise.reject();
     }
 }
 
