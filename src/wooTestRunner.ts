@@ -30,9 +30,10 @@ export function loadTests(log: Log): Promise<WooSuite> {
         '.git',
         '.vscode',
     ];
+    
+    testSuite = new WooSuite('', 'root', 'Woo Test Explorer');
 
     return new Promise<WooSuite>((resolve) => {
-        testSuite = new WooSuite('', 'root', 'Woo Test Explorer');
         log.debug('Workspace folder: ' + vscode.workspace.rootPath);
         vscode.workspace
             .findFiles(

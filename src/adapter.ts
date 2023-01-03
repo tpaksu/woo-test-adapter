@@ -80,7 +80,7 @@ export class WooTestAdapter implements TestAdapter {
     }
 
     async reload(): Promise<void> {
-        vscode.window.withProgress(
+        return vscode.window.withProgress(
             {
                 location: vscode.ProgressLocation.Notification,
                 title: 'Reloading tests..',
