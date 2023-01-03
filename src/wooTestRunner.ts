@@ -13,7 +13,7 @@ import { WooDiagnostics } from './diagnostics';
 import { WooSuite, WooSuiteState } from './wooSuite';
 import { WooTest, WooTestState } from './wooTest';
 
-const testSuite: WooSuite = new WooSuite('', 'root', 'Woo Test Explorer');
+let testSuite: WooSuite = new WooSuite('', 'root', 'Woo Test Explorer');
 
 export function loadTests(log: Log): Promise<WooSuite> {
     const workbenchConfig =
@@ -32,7 +32,7 @@ export function loadTests(log: Log): Promise<WooSuite> {
     ];
 
     return new Promise<WooSuite>((resolve) => {
-        testSuite.children = [];
+        testSuite = new WooSuite('', 'root', 'Woo Test Explorer');
         log.debug('Workspace folder: ' + vscode.workspace.rootPath);
         vscode.workspace
             .findFiles(
