@@ -72,9 +72,9 @@ export class WooTestAdapter implements TestAdapter {
             return suite.uri;
         });
 
-        vscode.workspace.onDidSaveTextDocument((e: vscode.TextDocument) => {
+        vscode.workspace.onDidSaveTextDocument(async (e: vscode.TextDocument) => {
             if (uris.find((uri) => uri === e.uri.path)) {
-                this.reload();
+                await this.reload();
             }
         });
     }
