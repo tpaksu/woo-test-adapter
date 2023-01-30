@@ -61,6 +61,7 @@ export class WooTestAdapter implements TestAdapter {
 
         this.testsEmitter.fire(<TestLoadStartedEvent>{ type: 'started' });
         this.diags.clear();
+        
         const loadedTests = await loadTests(this.log);
 
         this.testsEmitter.fire(<TestLoadFinishedEvent>{
@@ -75,6 +76,7 @@ export class WooTestAdapter implements TestAdapter {
         vscode.workspace.onDidSaveTextDocument(async (e: vscode.TextDocument) => {
             if (uris.find((uri) => uri === e.uri.path)) {
                 await this.reload();
+                return;
             }
         });
     }
