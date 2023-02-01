@@ -36,7 +36,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 log
             )
         );
-
+        
         vscode.workspace.onDidChangeConfiguration(
             (e: vscode.ConfigurationChangeEvent) => {
                 if (e.affectsConfiguration('woo-test-explorer')) {
@@ -44,5 +44,16 @@ export async function activate(context: vscode.ExtensionContext) {
                 }
             }
         );
+        
+        vscode.workspace.onDidSaveTextDocument(
+            async (e: vscode.TextDocument) => {
+                const uris = adapter.loadedTests.children.map((suite) => {
+                    return suite.uri;
+                });
+                if (uris.find((uri) => uri === e.uri.path)) {
+                    await adapter.reload();
+                }
+            }
+        )
     }
 }

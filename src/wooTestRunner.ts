@@ -41,6 +41,7 @@ export function loadTests(log: Log): Promise<WooSuite> {
                 '{' + excludePaths.join(',') + '}'
             )
             .then((uris: vscode.Uri[]) => {
+                let processed: string[] = [];
                 uris.sort((n1: vscode.Uri, n2: vscode.Uri) => {
                     const name1: string = n1.path.split('/').pop() || '';
                     const name2: string = n2.path.split('/').pop() || '';
@@ -52,6 +53,8 @@ export function loadTests(log: Log): Promise<WooSuite> {
                     }
                     return 0;
                 }).forEach((uri: vscode.Uri) => {
+                    if (processed.includes(uri.path)) return;
+                    processed.push(uri.path);
                     getTestSuite(uri.path, log);
                 });
                 resolve(testSuite);

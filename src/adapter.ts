@@ -10,6 +10,7 @@ import {
 } from 'vscode-test-adapter-api';
 import { Log } from 'vscode-test-adapter-util';
 import { WooDiagnostics } from './diagnostics';
+import { WooSuite } from './wooSuite';
 import { loadTests, runTests } from './wooTestRunner';
 
 /**
@@ -42,6 +43,8 @@ export class WooTestAdapter implements TestAdapter {
     get autorun(): vscode.Event<void> | undefined {
         return this.autorunEmitter.event;
     }
+    
+    public loadedTests: WooSuite = new WooSuite('', 'root', 'Woo Test Explorer');
 
     constructor(
         public readonly workspace: vscode.WorkspaceFolder,
@@ -61,27 +64,18 @@ export class WooTestAdapter implements TestAdapter {
 
         this.testsEmitter.fire(<TestLoadStartedEvent>{ type: 'started' });
         this.diags.clear();
-        
-        const loadedTests = await loadTests(this.log);
+
+        this.loadedTests = await loadTests(this.log);
 
         this.testsEmitter.fire(<TestLoadFinishedEvent>{
             type: 'finished',
-            suite: loadedTests,
-        });
-
-        const uris = loadedTests.children.map((suite) => {
-            return suite.uri;
-        });
-
-        vscode.workspace.onDidSaveTextDocument(async (e: vscode.TextDocument) => {
-            if (uris.find((uri) => uri === e.uri.path)) {
-                await this.reload();
-                return;
-            }
+            suite: this.loadedTests,
         });
     }
 
     async reload(): Promise<void> {
+        console.trace('Reloading tests');
+        this.log.info('Reloading tests..');
         return vscode.window.withProgress(
             {
                 location: vscode.ProgressLocation.Notification,
@@ -93,11 +87,11 @@ export class WooTestAdapter implements TestAdapter {
                     type: 'started',
                 });
                 this.diags.clear();
-                const loadedTests = await loadTests(this.log);
+                this.loadedTests = await loadTests(this.log);
                 this.log.info('Loaded tests..');
                 this.testsEmitter.fire(<TestLoadFinishedEvent>{
                     type: 'finished',
-                    suite: loadedTests,
+                    suite: this.loadedTests,
                 });
             }
         );
@@ -112,7 +106,7 @@ export class WooTestAdapter implements TestAdapter {
             tests,
             testRunId: 'wooTestRun' + this.testRunId.toString(),
         });
-        
+
         this.cancellationToken = new vscode.CancellationTokenSource();
 
         // in a "real" TestAdapter this would start a test run in a child process
